@@ -1,6 +1,38 @@
 import torch
 from torch import Tensor
-from torch.nn import Module, functional as fn
+from torch.nn import Module, functional as fn, Linear
+
+
+class AdditiveAttention(Module):
+    """Computes a context vector based on the given key."""
+
+    def __init__(self, key_size, query_size=None, bidirectional=False):
+        """
+        :param key_size: The size of the encoder hidden states
+        :param query_size: NOT SUPPORTED
+        :param bidirectional: If True, key_size will be doubled to account for bidirectional encoders
+        """
+        # TODO: Look into whether super can be initialized with different classes...
+        super().__init__()
+        if bidirectional:
+            self.key_size = 2 * key_size
+        else:
+            self.key_size = key_size
+
+        # TODO: Support decoder attention
+        if query_size is not None:
+            raise
+        query_size = 0
+
+        layer_size = max(key_size, query_size)
+        key_layer = Linear(self.key_size, layer_size)
+        energy_layer = Linear(layer_size, 1)
+        alignment = EncoderAdditiveAlignment(key_layer=key_layer, energy_layer=energy_layer)
+        self._impl = EncoderAdditiveAttention(alignment=alignment)
+
+    def forward(self, *args, **kwargs):
+        """Apply a forward pass"""
+        return self._impl(args, kwargs)
 
 
 class EncoderAdditiveAttention(Module):
