@@ -3,6 +3,32 @@ from torch import Tensor
 from torch.nn import Module, functional as fn
 
 
+class EncoderAdditiveAttention(Module):
+    """Computes a context vector based on the weighted average of the given encoder states."""
+
+    def __init__(self, alignment):
+        """
+        :param alignment: The module used to compute the alignment scores
+        """
+        super().__init__()
+        self.alignment = alignment
+
+    def forward(self, x, seq_lens=None):
+        """
+        Apply the forward pass to :param x.
+
+        :param x: The key (encoder states) to combine
+        :param seq_lens: If provided, anything past each seq_len will not be included in the weighted average
+        :return: The combined key, a weighted average of the encoder states
+        """
+        alignment_scores = self.alignment(x, seq_lens)
+
+        weighted_encoder_states = alignment_scores[..., None] * x
+        weighted_average = torch.sum(weighted_encoder_states, dim=0)
+
+        return weighted_average
+
+
 class EncoderAdditiveAlignment(Module):
     """Computes the alignment scores for a set of encoder states."""
 
@@ -18,7 +44,7 @@ class EncoderAdditiveAlignment(Module):
 
     def forward(self, x: Tensor, seq_lens: Tensor = None) -> Tensor:
         """
-        Apply the forward pass for the model.
+        Apply the forward pass to :param x.
 
         :param x: The key (encoder states)
         :param seq_lens: If given, values that fall out of each sequence length will be masked
