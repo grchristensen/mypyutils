@@ -1,7 +1,7 @@
 import pytest  # noqa
 import torch
 
-from mypyutils.test.torch.mocks import IdentityLinear, HalfToFirstAlignment
+from tests.torch.mocks import IdentityLinear, HalfToFirstAlignment
 from mypyutils.torch import EncoderAdditiveAlignment, EncoderAdditiveAttention
 
 

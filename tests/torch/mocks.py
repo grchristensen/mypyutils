@@ -66,7 +66,17 @@ class HalfToFirstAttention(EncoderAdditiveAttention):
 
 class MeanAttention(MagicMock):
     def __init__(self):
-        def mock_forward(x):
+        def mock_forward(x, seq_lens=None):
+            if seq_lens is not None:
+                max_length = max(seq_lens)
+
+                # Shapes: (seq_len, 1) >= (1, batch_size)
+                mask = torch.arange(max_length)[:, None] >= seq_lens[None, :]
+
+                x = x.masked_fill(mask.unsqueeze(2), value=0.)
+
+                return torch.sum(x, dim=0) / seq_lens.unsqueeze(1)
+
             return torch.mean(x, dim=0)
 
         super().__init__(side_effect=mock_forward)
