@@ -2,7 +2,8 @@ import pytest  # noqa
 import torch
 
 from tests.torch.mocks import IdentityLinear, HalfToFirstAlignment
-from mypyutils.torch import EncoderAdditiveAlignment, EncoderAdditiveAttention, DecoderAdditiveAlignment
+from mypyutils.torch import EncoderAdditiveAlignment, EncoderAdditiveAttention, DecoderAdditiveAlignment, \
+    DecoderAdditiveAttention
 
 
 class TestEncoderAdditiveAttention:
@@ -292,5 +293,28 @@ class TestDecoderAdditiveAlignment:
         alignment = DecoderAdditiveAlignment(query_layer=query_layer, key_layer=key_layer, energy_layer=energy_layer)
 
         output = alignment(query, key, seq_lens)
+
+        assert torch.allclose(output, expected, atol=self.atol, rtol=self.rtol)
+
+    attention_expected_outputs = [
+        torch.tensor([
+            [0.9456, 0.9456, 0.9456, 0.9456],
+            [3.0000, 3.0000, 3.0000, 3.0000],
+            [0.9456, 0.9456, 0.9456, 0.9456],
+            [2.5000, 2.5000, 2.5000, 2.5000],
+            [2.5000, 2.5000, 2.5000, 2.5000]
+        ])
+    ]
+
+    @pytest.mark.parametrize('query, key, seq_lens, expected',
+                             zip(queries, padded_keys, seq_lens_list, attention_expected_outputs))
+    def test_attention(self, query, key, seq_lens, expected):
+        query_layer = IdentityLinear(4)
+        key_layer = IdentityLinear(4)
+        energy_layer = IdentityLinear(1)
+        alignment = DecoderAdditiveAlignment(query_layer=query_layer, key_layer=key_layer, energy_layer=energy_layer)
+        attn = DecoderAdditiveAttention(alignment)
+
+        output = attn(query, key, seq_lens)
 
         assert torch.allclose(output, expected, atol=self.atol, rtol=self.rtol)
