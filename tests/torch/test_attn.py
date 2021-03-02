@@ -1,7 +1,7 @@
 import pytest  # noqa
 import torch
 
-from mypyutils.test.torch.mocks import IdentityLinear, FirstToHalfAlignment
+from tests.torch.mocks import IdentityLinear, HalfToFirstAlignment
 from mypyutils.torch import EncoderAdditiveAlignment, EncoderAdditiveAttention
 
 
@@ -40,7 +40,7 @@ class TestEncoderAdditiveAttention:
 
     @pytest.mark.parametrize('x, expected_output', zip(encoder_states_list, expected_outputs))
     def test_forward_pass(self, x, expected_output):
-        alignment = FirstToHalfAlignment()
+        alignment = HalfToFirstAlignment()
         attn = EncoderAdditiveAttention(alignment=alignment)
 
         output = attn(x)
@@ -86,7 +86,7 @@ class TestEncoderAdditiveAttention:
     @pytest.mark.parametrize('x, seq_lens, expected_output',
                              zip(padded_encoder_states_list, seq_lens_list, padded_expected_outputs))
     def test_packed_forward_pass(self, x, seq_lens, expected_output):
-        alignment = FirstToHalfAlignment()
+        alignment = HalfToFirstAlignment()
         attn = EncoderAdditiveAttention(alignment=alignment)
 
         output = attn(x, seq_lens)

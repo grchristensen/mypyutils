@@ -94,6 +94,7 @@ class EncoderAdditiveAlignment(Module):
             mask = torch.arange(max_length)[:, None] >= seq_lens[None, :]
 
             # Masking with -inf will cause softmax to output 0. for that value
+            # TODO: Investigate how this affects back-propagation
             energy = energy.masked_fill(mask, value=float('-inf'))
 
         # Softmax so that a weighted average can be taken with these scores

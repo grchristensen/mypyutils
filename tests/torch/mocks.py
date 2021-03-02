@@ -2,6 +2,17 @@ from unittest.mock import MagicMock
 
 import torch
 
+from mypyutils.torch import EncoderAdditiveAttention
+
+
+class IdentityRNN(MagicMock):
+    def __init__(self):
+        def mock_forward(x):
+            return x, 2
+
+        super().__init__(side_effect=mock_forward)
+        self.forward = mock_forward
+
 
 class IdentityLinear(MagicMock):
     def __init__(self, output_size):
@@ -13,7 +24,7 @@ class IdentityLinear(MagicMock):
         self.forward = mock_forward
 
 
-class FirstToHalfAlignment(MagicMock):
+class HalfToFirstAlignment(MagicMock):
     def __init__(self):
         def mock_forward(x, seq_lens=None):
             max_seq_len, batch_size = x.shape[0], x.shape[1]
@@ -43,6 +54,30 @@ class FirstToHalfAlignment(MagicMock):
                     alignment_scores[0, :] = 1.
 
             return alignment_scores
+
+        super().__init__(side_effect=mock_forward)
+        self.forward = mock_forward
+
+
+class HalfToFirstAttention(EncoderAdditiveAttention):
+    def __init__(self):
+        super().__init__(HalfToFirstAlignment())
+
+
+class MeanAttention(MagicMock):
+    def __init__(self):
+        def mock_forward(x, seq_lens=None):
+            if seq_lens is not None:
+                max_length = max(seq_lens)
+
+                # Shapes: (seq_len, 1) >= (1, batch_size)
+                mask = torch.arange(max_length)[:, None] >= seq_lens[None, :]
+
+                x = x.masked_fill(mask.unsqueeze(2), value=0.)
+
+                return torch.sum(x, dim=0) / seq_lens.unsqueeze(1)
+
+            return torch.mean(x, dim=0)
 
         super().__init__(side_effect=mock_forward)
         self.forward = mock_forward
