@@ -87,16 +87,40 @@ class EncoderAdditiveAlignment(Module):
         energy = self.energy_layer(key).squeeze(2)
 
         if seq_lens is not None:
-            # If seq_lens are given, we must mask values that are outside the sequence boundary
-            max_length = max(seq_lens)
-
-            # Shapes: (seq_len, 1) >= (1, batch_size)
-            mask = torch.arange(max_length)[:, None] >= seq_lens[None, :]
-
-            # Masking with -inf will cause softmax to output 0. for that value
-            # TODO: Investigate how this affects back-propagation
-            energy = energy.masked_fill(mask, value=float('-inf'))
+            energy = mask_energy(energy, seq_lens)
 
         # Softmax so that a weighted average can be taken with these scores
+        alignment_scores = fn.softmax(energy, dim=0)
+        return alignment_scores
+
+
+def mask_energy(energy, seq_lens):
+    max_length = max(seq_lens)
+
+    # Shapes: (seq_len, 1) >= (1, batch_size)
+    mask = torch.arange(max_length)[:, None] >= seq_lens[None, :]
+
+    # Masking with -inf will cause softmax to output 0. for that value
+    energy = energy.masked_fill(mask, value=float('-inf'))
+
+    return energy
+
+
+class DecoderAdditiveAlignment(Module):
+    def __init__(self, query_layer, key_layer, energy_layer):
+        super().__init__()
+        self.query_layer = query_layer
+        self.key_layer = key_layer
+        self.energy_layer = energy_layer
+
+    def forward(self, query, key, seq_lens=None):
+        query = self.query_layer(query)
+        key = self.key_layer(key)
+
+        energy = self.energy_layer(torch.tanh(query + key)).squeeze(2)
+
+        if seq_lens is not None:
+            energy = mask_energy(energy, seq_lens)
+
         alignment_scores = fn.softmax(energy, dim=0)
         return alignment_scores

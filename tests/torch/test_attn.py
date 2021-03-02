@@ -2,7 +2,7 @@ import pytest  # noqa
 import torch
 
 from tests.torch.mocks import IdentityLinear, HalfToFirstAlignment
-from mypyutils.torch import EncoderAdditiveAlignment, EncoderAdditiveAttention
+from mypyutils.torch import EncoderAdditiveAlignment, EncoderAdditiveAttention, DecoderAdditiveAlignment
 
 
 class TestEncoderAdditiveAttention:
@@ -184,3 +184,113 @@ class TestEncoderAdditiveAlignment:
         output = alignment(x, seq_lens)
 
         assert torch.allclose(output, expected_output, atol=self.atol, rtol=self.rtol)
+
+
+class TestDecoderAdditiveAlignment:
+    atol = 1e-4
+    rtol = 1e-8
+
+    queries = [
+        torch.tensor([
+            [4, 4, 4, 4],
+            [4, 4, 4, 4],
+            [4, 4, 4, 4],
+            [4, 4, 4, 4],
+            [4, 4, 4, 4]
+        ])
+    ]
+
+    keys = [
+        torch.tensor([
+            [
+                [3., 3., 3., 3.],
+                [3., 3., 3., 3.],
+                [3., 3., 3., 3.],
+                [3., 3., 3., 3.],
+                [3., 3., 3., 3.]
+            ],
+            [
+                [2., 2., 2., 2.],
+                [2., 2., 2., 2.],
+                [2., 2., 2., 2.],
+                [2., 2., 2., 2.],
+                [2., 2., 2., 2.]
+            ],
+            [
+                [-3., -3., -3., -3.],
+                [-3., -3., -3., -3.],
+                [-3., -3., -3., -3.],
+                [-3., -3., -3., -3.],
+                [-3., -3., -3., -3.]
+            ]
+        ])
+    ]
+
+    expected_outputs = [
+        torch.tensor([
+            [0.3587, 0.3587, 0.3587, 0.3587, 0.3587],
+            [0.3587, 0.3587, 0.3587, 0.3587, 0.3587],
+            [0.2826, 0.2826, 0.2826, 0.2826, 0.2826],
+        ])
+    ]
+
+    @pytest.mark.parametrize('query, key, expected', zip(queries, keys, expected_outputs))
+    def test_forward_pass(self, query, key, expected):
+        query_layer = IdentityLinear(4)
+        key_layer = IdentityLinear(4)
+        energy_layer = IdentityLinear(1)
+        alignment = DecoderAdditiveAlignment(query_layer=query_layer, key_layer=key_layer, energy_layer=energy_layer)
+
+        output = alignment(query, key)
+
+        assert torch.allclose(output, expected, atol=self.atol, rtol=self.rtol)
+
+    padded_keys = [
+        torch.tensor([
+            [
+                [3., 3., 3., 3.],
+                [3., 3., 3., 3.],
+                [3., 3., 3., 3.],
+                [3., 3., 3., 3.],
+                [3., 3., 3., 3.]
+            ],
+            [
+                [2., 2., 2., 2.],
+                [0., 0., 0., 0.],
+                [2., 2., 2., 2.],
+                [2., 2., 2., 2.],
+                [2., 2., 2., 2.]
+            ],
+            [
+                [-3., -3., -3., -3.],
+                [-0., -0., -0., -0.],
+                [-3., -3., -3., -3.],
+                [-0., -0., -0., -0.],
+                [-0., -0., -0., -0.]
+            ]
+        ])
+    ]
+
+    seq_lens_list = [
+        torch.tensor([3, 1, 3, 2, 2])
+    ]
+
+    padded_expected_outputs = [
+        torch.tensor([
+            [0.3587, 1.0000, 0.3587, 0.5000, 0.5000],
+            [0.3587, 0.0000, 0.3587, 0.5000, 0.5000],
+            [0.2826, 0.0000, 0.2826, 0.0000, 0.0000],
+        ])
+    ]
+
+    @pytest.mark.parametrize('query, key, seq_lens, expected',
+                             zip(queries, padded_keys, seq_lens_list, padded_expected_outputs))
+    def test_pack_forward_pass(self, query, key, seq_lens, expected):
+        query_layer = IdentityLinear(4)
+        key_layer = IdentityLinear(4)
+        energy_layer = IdentityLinear(1)
+        alignment = DecoderAdditiveAlignment(query_layer=query_layer, key_layer=key_layer, energy_layer=energy_layer)
+
+        output = alignment(query, key, seq_lens)
+
+        assert torch.allclose(output, expected, atol=self.atol, rtol=self.rtol)
