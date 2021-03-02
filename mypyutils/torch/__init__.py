@@ -6,3 +6,5 @@ from mypyutils.torch._encoder import AttnEncoder
 from mypyutils.torch._encoder import NoAttnEncoder
 from mypyutils.torch._encoder import Encoder
 from mypyutils.torch._encoder import ChainedEncoder
+from mypyutils.torch._decoder import AttnDecoder
+from mypyutils.torch._decoder import NoAttnDecoder

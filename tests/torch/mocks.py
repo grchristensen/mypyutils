@@ -1,8 +1,9 @@
 from unittest.mock import MagicMock
 
 import torch
+from torch.nn import functional as fn
 
-from mypyutils.torch import EncoderAdditiveAttention
+from mypyutils.torch import EncoderAdditiveAttention, DecoderAdditiveAttention
 
 
 class IdentityRNN(MagicMock):
@@ -11,6 +12,40 @@ class IdentityRNN(MagicMock):
             return x, 2
 
         super().__init__(side_effect=mock_forward)
+        self.forward = mock_forward
+
+
+class AddHiddenRNN(MagicMock):
+    def __init__(self, hidden_size):
+        def mock_forward(x, h0=None):
+            seq_len, batch_size, _ = x.shape
+            if h0 is None:
+                h0 = torch.zeros(batch_size, hidden_size)[None, ...]
+
+            acc = torch.arange(seq_len)[:, None, None] + 1
+
+            output = h0 + acc
+            return output, output[-1]
+
+        super().__init__(side_effect=mock_forward)
+        self.hidden_size = hidden_size
+        self.forward = mock_forward
+
+
+class AddHiddenAndInputRNN(MagicMock):
+    def __init__(self, hidden_size):
+        def mock_forward(x, h0=None):
+            seq_len, batch_size, _ = x.shape
+            if h0 is None:
+                h0 = torch.zeros(batch_size, hidden_size)[None, ...]
+
+            acc = torch.arange(seq_len)[:, None, None] + 1
+
+            output = x + h0 + acc
+            return output, output[-1]
+
+        super().__init__(side_effect=mock_forward)
+        self.hidden_size = hidden_size
         self.forward = mock_forward
 
 
@@ -73,7 +108,7 @@ class MeanAttention(MagicMock):
                 # Shapes: (seq_len, 1) >= (1, batch_size)
                 mask = torch.arange(max_length)[:, None] >= seq_lens[None, :]
 
-                x = x.masked_fill(mask.unsqueeze(2), value=0.)
+                x = x.masked_fill(mask.unsqueeze(2), value=0.)  # noqa: Unresolved Attribute 'unsqueeze'
 
                 return torch.sum(x, dim=0) / seq_lens.unsqueeze(1)
 
@@ -81,3 +116,31 @@ class MeanAttention(MagicMock):
 
         super().__init__(side_effect=mock_forward)
         self.forward = mock_forward
+
+
+class SumToFirstAlignment(MagicMock):
+    def __init__(self):
+        def mock_forward(query, key, seq_lens=None):
+            seq_len, batch_size, _ = key.shape
+            query_sum = torch.sum(query, dim=1)
+            energy = torch.zeros(seq_len, batch_size)
+
+            energy[0] = query_sum
+
+            if seq_lens is not None:
+                max_length = max(seq_lens)
+
+                # Shapes: (seq_len, 1) >= (1, batch_size)
+                mask = torch.arange(max_length)[:, None] >= seq_lens[None, :]
+
+                energy = energy.masked_fill(mask.unsqueeze(2), value=float('-inf'))
+
+            return fn.softmax(energy, dim=0)
+
+        super().__init__(side_effect=mock_forward)
+        self.forward = mock_forward
+
+
+class SumToFirstAttention(DecoderAdditiveAttention):
+    def __init__(self):
+        super().__init__(SumToFirstAlignment())

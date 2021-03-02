@@ -98,6 +98,7 @@ class AttnEncoder(Module):
         return encoding
 
 
+# TODO: Check if RNNs can accept non-flattened inputs, (and check if it still works with pad/pack)
 # TODO: Check whether computing a value and then padding it with pack_padded_sequence will still have it affect grad
 class ChainedEncoder(Module):
     """Encodes nested sequences using multiple encoders."""
