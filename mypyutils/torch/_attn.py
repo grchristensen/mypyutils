@@ -10,7 +10,8 @@ class AdditiveAttention(Module):
         """
         :param key_size: The size of the encoder hidden states
         :param query_size: NOT SUPPORTED
-        :param bidirectional: If True, key_size will be doubled to account for bidirectional encoders
+        :param bidirectional: If True, key_size will be doubled to account for
+        bidirectional encoders
         """
         # TODO: Look into whether super can be initialized with different classes...
         super().__init__()
@@ -25,13 +26,16 @@ class AdditiveAttention(Module):
             query_layer = Linear(query_size, layer_size)
             key_layer = Linear(self.key_size, layer_size)
             energy_layer = Linear(layer_size, 1)
-            alignment = DecoderAdditiveAlignment(query_layer=query_layer, key_layer=key_layer,
-                                                 energy_layer=energy_layer)
+            alignment = DecoderAdditiveAlignment(
+                query_layer=query_layer, key_layer=key_layer, energy_layer=energy_layer
+            )
             self._impl = DecoderAdditiveAttention(alignment=alignment)
         else:
             key_layer = Linear(self.key_size, key_size)
             energy_layer = Linear(key_size, 1)
-            alignment = EncoderAdditiveAlignment(key_layer=key_layer, energy_layer=energy_layer)
+            alignment = EncoderAdditiveAlignment(
+                key_layer=key_layer, energy_layer=energy_layer
+            )
             self._impl = EncoderAdditiveAttention(alignment=alignment)
 
     def forward(self, *args, **kwargs):
@@ -40,7 +44,9 @@ class AdditiveAttention(Module):
 
 
 class EncoderAdditiveAttention(Module):
-    """Computes a context vector based on the weighted average of the given encoder states."""
+    """
+    Computes a context vector based on the weighted average of the given encoder states.
+    """
 
     def __init__(self, alignment):
         """
@@ -54,7 +60,8 @@ class EncoderAdditiveAttention(Module):
         Apply the forward pass to :param x.
 
         :param x: The key (encoder states) to combine
-        :param seq_lens: If provided, anything past each seq_len will not be included in the weighted average
+        :param seq_lens: If provided, anything past each seq_len will not be included
+        in the weighted average
         :return: The combined key, a weighted average of the encoder states
         """
         alignment_scores = self.alignment(x, seq_lens)
@@ -70,8 +77,8 @@ class EncoderAdditiveAlignment(Module):
 
     def __init__(self, key_layer, energy_layer):
         """
-        :param key_layer: The layer to apply to the key (encoder states). Must be compatible with the :param
-        energy_layer
+        :param key_layer: The layer to apply to the key (encoder states). Must be
+        compatible with the :param energy_layer
         :param energy_layer: The layer to apply after the :param key_layer
         """
         super().__init__()
@@ -83,7 +90,8 @@ class EncoderAdditiveAlignment(Module):
         Apply the forward pass to :param x.
 
         :param x: The key (encoder states)
-        :param seq_lens: If given, values that fall out of each sequence length will be masked
+        :param seq_lens: If given, values that fall out of each sequence length will be
+        masked
         :return: The alignment scores for this key
         """
         # This module is a trainable 2-layer MLP
@@ -105,13 +113,16 @@ def mask_energy(energy, seq_lens):
     mask = torch.arange(max_length)[:, None] >= seq_lens[None, :]
 
     # Masking with -inf will cause softmax to output 0. for that value
-    energy = energy.masked_fill(mask, value=float('-inf'))
+    energy = energy.masked_fill(mask, value=float("-inf"))
 
     return energy
 
 
 class DecoderAdditiveAttention(Module):
-    """Computes a context vector based on the weighted average of the given encoder states and the query."""
+    """
+    Computes a context vector based on the weighted average of the given encoder states
+    and the query.
+    """
 
     def __init__(self, alignment):
         """
@@ -126,7 +137,8 @@ class DecoderAdditiveAttention(Module):
 
         :param query: The query (decoder state)
         :param key: The key (encoder states) to combine
-        :param seq_lens: If provided, anything past each seq_len will not be included in the weighted average
+        :param seq_lens: If provided, anything past each seq_len will not be included in
+        the weighted average
         :return: The combined key, a weighted average of the encoder states
         """
         alignment_scores = self.alignment(query, key, seq_lens)
