@@ -8,3 +8,5 @@ from mypyutils.torch._encoder import Encoder  # noqa: F401
 from mypyutils.torch._encoder import ChainedEncoder  # noqa: F401
 from mypyutils.torch._decoder import AttnDecoder  # noqa: F401
 from mypyutils.torch._decoder import NoAttnDecoder  # noqa: F401
+from mypyutils.torch._decoder import Decoder  # noqa: F401
+from mypyutils.torch._decoder import ChainedDecoder  # noqa: F401

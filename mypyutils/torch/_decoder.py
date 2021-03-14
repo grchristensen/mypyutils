@@ -128,3 +128,38 @@ class NoAttnDecoder(Module):
             output[index] = decoder_output[0]
 
         return output
+
+
+class ChainedDecoder(Module):
+    def __init__(self, *decoders):
+        super().__init__()
+        self.decoders = decoders
+
+    def forward(self, query, key=None, seq_lens=None):
+        if key is None:
+            first_pass = self.decoders[0](query)
+        else:
+            first_pass = self.decoders[0](query, key, seq_lens=seq_lens)
+
+        first_seq_len, batch_size, hidden_dim = first_pass.shape
+
+        total_seq_len = first_seq_len
+        last_pass = torch.reshape(first_pass, [-1, hidden_dim])
+        last_seq_len = first_seq_len
+
+        for decoder in self.decoders[1:]:
+            last_pass = decoder(last_pass)
+
+            next_seq_len, _, hidden_dim = last_pass.shape
+
+            total_seq_len *= next_seq_len
+
+            last_pass = torch.reshape(
+                last_pass, [-1, last_seq_len, batch_size, hidden_dim]
+            )
+            last_pass = torch.reshape(
+                torch.transpose(last_pass, 0, 1), [-1, hidden_dim]
+            )
+            last_seq_len = next_seq_len
+
+        return torch.reshape(last_pass, [total_seq_len, batch_size, hidden_dim])

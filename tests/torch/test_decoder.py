@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from mypyutils.torch import NoAttnDecoder, AttnDecoder
+from mypyutils.torch import NoAttnDecoder, AttnDecoder, ChainedDecoder
 from tests.torch.mocks import (
     AddHiddenRNN,
     SumToFirstAttention,
@@ -269,3 +269,64 @@ class TestAttnDecoder:
         output = decoder.teacher_force(first_query, key, forced)
 
         assert torch.allclose(output, expected, atol=self.atol, rtol=self.rtol)
+
+
+class TestChainedDecoder:
+    context_vectors = [
+        torch.tensor(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [2.0, 0.0, 2.0, 0.0, 2.0],
+                [1.0, 2.0, 3.0, 4.0, 5.0],
+            ]
+        )
+    ]
+
+    expected_outputs = [
+        torch.tensor(
+            [
+                [
+                    [2.0, 2.0, 2.0, 2.0, 2.0],
+                    [4.0, 2.0, 4.0, 2.0, 4.0],
+                    [3.0, 4.0, 5.0, 6.0, 7.0],
+                ],
+                [
+                    [5.0, 5.0, 5.0, 5.0, 5.0],
+                    [9.0, 5.0, 9.0, 5.0, 9.0],
+                    [7.0, 9.0, 11.0, 13.0, 15.0],
+                ],
+                [
+                    [4.0, 4.0, 4.0, 4.0, 4.0],
+                    [8.0, 4.0, 8.0, 4.0, 8.0],
+                    [6.0, 8.0, 10.0, 12.0, 14.0],
+                ],
+                [
+                    [9.0, 9.0, 9.0, 9.0, 9.0],
+                    [17.0, 9.0, 17.0, 9.0, 17.0],
+                    [13.0, 17.0, 21.0, 25.0, 29.0],
+                ],
+                [
+                    [8.0, 8.0, 8.0, 8.0, 8.0],
+                    [16.0, 8.0, 16.0, 8.0, 16.0],
+                    [12.0, 16.0, 20.0, 24.0, 28.0],
+                ],
+                [
+                    [17.0, 17.0, 17.0, 17.0, 17.0],
+                    [33.0, 17.0, 33.0, 17.0, 33.0],
+                    [25.0, 33.0, 41.0, 49.0, 57.0],
+                ],
+            ]
+        )
+    ]
+
+    # TODO: Only up to two decoders are supported by tests, also need to support teacher
+    # forcing
+    @pytest.mark.parametrize("x, expected", zip(context_vectors, expected_outputs))
+    def test_two_decoders(self, x, expected):
+        decoder_1 = NoAttnDecoder(AddHiddenAndInputRNN(5), max_length=3)
+        decoder_2 = NoAttnDecoder(AddHiddenAndInputRNN(5), max_length=2)
+        decoder = ChainedDecoder(decoder_1, decoder_2)
+
+        output = decoder(x)
+
+        assert torch.equal(output, expected)
