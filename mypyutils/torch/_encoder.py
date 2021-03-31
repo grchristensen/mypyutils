@@ -43,6 +43,8 @@ class NoAttnEncoder(Module):
         self.rnn = rnn
         self.whole_sequence = whole_sequence
 
+    # TODO: This needs to return the entire sequence AND the last item is whole_sequence
+    # is true.
     def forward(self, x: Tensor) -> Tensor:
         """
         Pass :param x through the network.

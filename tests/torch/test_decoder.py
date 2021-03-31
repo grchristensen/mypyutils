@@ -9,6 +9,12 @@ from tests.torch.mocks import (
 )
 
 
+# TODO: Refactor to eliminate mocking in testing.
+# TODO: Better test coverage, including GPU usage.
+# TODO: GPU usage should not have to be covered in every test, find a way to abstract or
+#       automate the process.
+
+
 class TestNoAttnDecoder:
     context_vectors = [
         torch.tensor(
